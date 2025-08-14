@@ -1,34 +1,37 @@
-# -------------------- Makefile -----------------------------------------
+make
+# --------------------------------------------------------------
+# Makefile for wikilator-paq8x-test
+# --------------------------------------------------------------
+
 CXX      := g++
-CXXFLAGS := -std=c++17 -Wall -Wextra -O3 -ffast-math -funroll-loops
-LDFLAGS  := -static   # optional: produces a single binary
+CXXFLAGS := -std=c++17 -O2 -Wall -Wextra -pedantic
+LDFLAGS  :=
+SRC      := wikilator-paq8x-test.cpp
+OBJ      := $(SRC:.cpp=.o)
+TARGET   := wikilator-paq8x-test
 
-# Detect CPU – if gcc supports -march=native we use it,
-# otherwise fall back to a safe generic set.
-ifeq ($(shell $(CXX) -march=native -Q --help=target | grep -c "enabled"),1)
-	CXXFLAGS += -march=native
-else
-	CXXFLAGS += -march=x86-64   # generic x86‑64
-endif
+# Default target
+all: $(TARGET)
 
-# Enable Link Time Optimization if the compiler knows it
-ifneq (,$(findstring -flto,$(CXXFLAGS)))
-	CXXFLAGS += -flto
-endif
+# Link the final binary
+$(TARGET): $(OBJ)
+	$(CXX) $(LDFLAGS) -o $@ $^
 
-OBJS := compress.o decompress.o
-
-# The single binary – the name required by the description
-wikilator-paq8x-test: $(OBJS)
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
-
-compress.o: compress.cpp common.hpp
+# Compile .cpp → .o
+%.o: %.cpp common.hpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-decompress.o: decompress.cpp common.hpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
-
-clean:
-	rm -f *.o wikilator-paq8x-test
-
+# Clean up generated files
 .PHONY: clean
+clean:
+	$(RM) $(OBJ) $(TARGET)
+
+# Convenience target to run a quick test (optional)
+.PHONY: test
+test: $(TARGET)
+	@echo "Running a quick compress‑decompress sanity check..."
+	@echo "Hello, PAQ8X!" > sample.txt
+	@./$(TARGET) c sample.txt sample.paq
+	@./$(TARGET) d sample.paq sample.out
+	@cmp -s sample.txt sample.out && echo "PASS: round‑trip identical" || echo "FAIL: files differ"
+	@$(RM) sample.txt sample.paq sample.out
